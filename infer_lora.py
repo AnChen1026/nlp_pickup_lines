@@ -49,12 +49,18 @@ def main():
         # 指定 LoRA adapter 目錄。
         ADAPTER_DIR,
 
-        # T4 使用 FP16 載入模型。
-        dtype=torch.float16,
+        # CUDA（例如 Colab T4）用 FP16；
+        # Mac 的 MPS 用 FP32，FP16 在 MPS 上生成文字容易不穩定。
+        dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
 
-        # 讓 Transformers 自動安排模型到 GPU。
-        device_map="auto",
+        # CUDA 自動放到 GPU。
+        # Mac 上 device_map="mps" 會讓程式直接崩潰，
+        # 所以先在 CPU 載入，下面再搬到 MPS。
+        device_map="auto" if torch.cuda.is_available() else None,
     )
+
+    if not torch.cuda.is_available() and torch.backends.mps.is_available():
+        model = model.to("mps")
 
     # 切換到 evaluation mode，停用 dropout。
     model.eval()
